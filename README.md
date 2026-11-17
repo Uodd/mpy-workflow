@@ -32,12 +32,24 @@ make flash
 ## Develop
 
 ```sh
-make run FILE=src/main.py   # test a file without saving it to the board
-make push                   # copy everything in src/ to the board
-make repl                   # open the REPL (Ctrl-C stops the program, Ctrl-D restarts it, Ctrl-] exits)
+make dev      # run src/main.py from your computer, nothing copied
+make deploy   # copy src/ to the board, restart it and watch the output
+make repl     # open the REPL (Ctrl-C stops the program, Ctrl-D restarts it, Ctrl-] exits)
 ```
 
-`src/main.py` runs automatically every time the board boots.
+Keys in `make dev`, `make run`, `make repl` and `make deploy`:
+
+| Keys | Effect |
+|---|---|
+| Ctrl-C | Stop the program. If you see a `>` prompt instead of `>>>`, press Ctrl-B |
+| Ctrl-D | Restart the board, which runs the `main.py` saved on it. Don't use it in `make dev`: exit and run `make dev` again instead |
+| Ctrl-X (or Ctrl-]) | Exit back to your terminal |
+
+`make dev` lets the board read `src/` directly from your computer, so imports between your own files work and a buggy version can't stay on the board. Once it works, `make deploy` installs it: `main.py` then runs automatically every time the board boots.
+
+`make push` (and `deploy`) never deletes files on the board. To clean up files you removed or renamed in `src/`, use `make rm FILE=...` or `make wipe`.
+
+Install MicroPython libraries with `make mip PKG=<name>`, e.g. `make mip PKG=aioble`.
 
 ## All commands
 
@@ -52,11 +64,15 @@ make repl                   # open the REPL (Ctrl-C stops the program, Ctrl-D re
 | `make upgrade BIN=...` | Write the firmware without erasing; files on the board are usually kept (if the flash layout doesn't change) |
 | `make repl` | Open the REPL |
 | `make ls` / `make tree` | List files on the board |
+| `make dev` | Run `src/main.py` from your computer without copying anything |
+| `make deploy` | Push `src/`, restart the board and open the REPL |
 | `make push` | Upload `src/` (or a single file with `FILE=`) |
 | `make pull` | Download the whole board into `pulled/` (or a single file/folder with `FILE=`) |
 | `make rm FILE=main.py` | Delete a file from the board |
+| `make wipe` | Delete all files on the board except `boot.py` (asks first) |
 | `make run FILE=src/x.py` | Run a local file without saving it |
-| `make reset` | Soft-reset the board |
+| `make reset` | Restart the board (runs `boot.py` and `main.py`) |
+| `make mip PKG=aioble` | Install a MicroPython package into `/lib` on the board |
 
 ## Options
 
