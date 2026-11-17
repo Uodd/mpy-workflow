@@ -2,6 +2,10 @@
 
 A Makefile to flash MicroPython onto an ESP32 and manage files on the board, using `esptool` and `mpremote`.
 
+## Start a new project
+
+This repo is a GitHub template. Click **Use this template → Create a new repository**, then clone your new repo. You get all the files without this repo's history.
+
 ## Setup
 
 ```sh
