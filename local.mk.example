@@ -1,0 +1,15 @@
+# Personal settings for this machine.
+# Copy this file to local.mk (ignored by Git) and edit it:
+#   cp local.mk.example local.mk
+# Anything set in local.mk overrides the defaults in the Makefile.
+# A value given on the command line still wins: make flash BIN=mpBin/other.bin
+# Keep comments on their own lines (a comment after a value adds trailing spaces).
+
+# Firmware to flash (see: make bins)
+# BIN = mpBin/<firmware>.bin
+
+# PORT   = /dev/ttyUSB0
+# Use 0x0 for ESP32-S3, C3 or C6:
+# OFFSET = 0x1000
+# BAUD   = 460800
+# PULL_DIR = pulled

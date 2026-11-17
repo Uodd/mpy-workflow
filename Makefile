@@ -3,16 +3,21 @@
 #   make flash PORT=/dev/ttyUSB1 BIN=mpBin/other.bin
 
 # ---- Configuration -----------------------------------------------------------
+# Personal settings (not committed): put e.g. BIN = mpBin/xxx.bin in local.mk
+-include local.mk
+
 PORT   ?= /dev/ttyUSB0
-BIN    ?= $(firstword $(wildcard mpBin/*.bin))
+# Firmware to flash: set it here or pass it at runtime (make flash BIN=mpBin/xxx.bin)
+BIN    ?=
 CHIP   ?= esp32
 BAUD   ?= 460800
 # Flash offset: 0x1000 for ESP32, 0x0 for ESP32-S3/C3/C6
 OFFSET ?= 0x1000
 SRC    ?= src
+# Local folder where make pull saves files from the board
+PULL_DIR ?= pulled
 # For push/pull/rm/run of a single file
 FILE   ?=
-DEST   ?= .
 
 VENV     := .venv
 ESPTOOL  := $(VENV)/bin/esptool
@@ -20,12 +25,12 @@ MPREMOTE := $(VENV)/bin/mpremote
 MP       := $(MPREMOTE) connect $(PORT)
 
 .DEFAULT_GOAL := help
-.PHONY: help install ports info erase write flash repl ls push pull rm run reset tree
+.PHONY: help install ports bins info erase upgrade flash repl ls push pull rm run reset tree
 
 help: ## Show this help
 	@echo "Usage: make <target> [PORT=$(PORT)] [BIN=$(BIN)]"
 	@echo
-	@grep -E '^[a-zA-Z_-]+:.*?## ' $(MAKEFILE_LIST) | \
+	@grep -E '^[a-zA-Z_-]+:.*?## ' $(firstword $(MAKEFILE_LIST)) | \
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-13s\033[0m %s\n", $$1, $$2}'
 
 install: ## Create venv and install requirements
@@ -36,19 +41,26 @@ ports: ## List available serial ports
 	@$(MPREMOTE) devs | grep -v '^/dev/ttyS'
 
 # ---- Flashing (esptool) ------------------------------------------------------
+bins: ## List firmware files in mpBin/
+	@ls -1 mpBin/*.bin 2>/dev/null || echo "No .bin files in mpBin/"
+
 info: ## Show chip and flash info
 	$(ESPTOOL) --chip $(CHIP) --port $(PORT) flash-id
 
 erase: ## Erase the whole flash
 	$(ESPTOOL) --chip $(CHIP) --port $(PORT) erase-flash
 
-write: _check-bin ## Write BIN to flash (no erase)
-	$(ESPTOOL) --chip $(CHIP) --port $(PORT) --baud $(BAUD) write-flash -z $(OFFSET) $(BIN)
+WRITE_FW = $(ESPTOOL) --chip $(CHIP) --port $(PORT) --baud $(BAUD) write-flash -z $(OFFSET) $(BIN)
 
-flash: erase write ## Erase flash and write MicroPython BIN
+upgrade: _check-bin ## Write firmware without erasing (files on the board are usually kept)
+	$(WRITE_FW)
+
+flash: _check-bin erase ## Clean install: erase everything, then write firmware
+	$(WRITE_FW)
 
 _check-bin:
-	@test -n "$(BIN)" -a -f "$(BIN)" || { echo "Error: BIN not found ('$(BIN)'). Set BIN=path/to/firmware.bin"; exit 1; }
+	@if [ -z "$(BIN)" ]; then echo "Error: BIN not set. Use: make $(or $(MAKECMDGOALS),flash) BIN=mpBin/<file>.bin"; echo "Available:"; $(MAKE) -s bins; exit 1; fi
+	@test -f "$(BIN)" || { echo "Error: '$(BIN)' not found"; exit 1; }
 
 # ---- Files & REPL (mpremote) -------------------------------------------------
 repl: ## Open the REPL (exit with Ctrl-])
@@ -68,9 +80,14 @@ else
 	$(MP) fs cp $(FILE) :$(notdir $(FILE))
 endif
 
-pull: ## Download FILE from device into DEST (default .), e.g. make pull FILE=main.py DEST=src/
-	@test -n "$(FILE)" || { echo "Usage: make pull FILE=<device path> [DEST=<local dir>]"; exit 1; }
-	$(MP) fs cp -r :$(FILE) $(DEST)
+pull: ## Download FILE (or the whole board if FILE empty) into PULL_DIR, keeping folders
+ifeq ($(strip $(FILE)),)
+	mkdir -p $(PULL_DIR)
+	$(MP) fs cp -r : $(PULL_DIR)/
+else
+	mkdir -p $(PULL_DIR)/$(dir $(FILE))
+	$(MP) fs cp -r :$(FILE) $(PULL_DIR)/$(dir $(FILE))
+endif
 
 rm: ## Remove FILE from device
 	@test -n "$(FILE)" || { echo "Usage: make rm FILE=<device path>"; exit 1; }

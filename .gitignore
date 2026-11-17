@@ -2,3 +2,5 @@
 mpBin/*
 !mpBin/.gitkeep
 __pycache__/
+local.mk
+pulled/
